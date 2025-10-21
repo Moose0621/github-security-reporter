@@ -11,6 +11,7 @@ A comprehensive tool that automatically generates professional security reports 
 - 🔍 **Code Scanning Analysis** - Pull latest CodeQL and third-party security alerts
 - 🔐 **Secret Detection** - Identify exposed API keys, tokens, and credentials
 - 📊 **Dependency Vulnerabilities** - Check for known security issues in dependencies
+- 📦 **Dependabot Alerts** - Review automated dependency security updates and alerts
 - 📄 **Multiple Output Formats** - HTML dashboard, PDF report, JSON data, and SARIF files
 - 🎨 **Professional Styling** - Clean, modern reports ready for stakeholder review
 - 🚀 **Zero Configuration** - Works with existing GitHub security features

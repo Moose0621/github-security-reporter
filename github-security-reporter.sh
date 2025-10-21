@@ -68,6 +68,7 @@ DESCRIPTION:
     - Code scanning alerts (CodeQL, third-party tools)
     - Secret scanning (exposed credentials)
     - Dependency vulnerabilities
+    - Dependabot alerts (automated dependency updates)
     - SARIF analysis files
 
 OUTPUT:
@@ -238,6 +239,13 @@ if ! SECRET_SCANNING_ALERTS=$(gh api repos/$REPO/secret-scanning/alerts $GH_HOST
     SECRET_SCANNING_ALERTS="[]"
 fi
 
+# Fetch Dependabot alerts if available
+log_info "Fetching Dependabot alerts..."
+if ! DEPENDABOT_ALERTS=$(gh api repos/$REPO/dependabot/alerts $GH_HOST_FLAG 2>/dev/null); then
+    log_info "Dependabot alerts not available or accessible"
+    DEPENDABOT_ALERTS="[]"
+fi
+
 # Step 3: Combine all data into a comprehensive data.json
 log_info "Combining report data..."
 
@@ -249,6 +257,7 @@ jq -n \
   --argjson codeScanning "$CODE_SCANNING_ALERTS" \
   --argjson dependency "$DEPENDENCY_JSON" \
   --argjson secretScanning "$SECRET_SCANNING_ALERTS" \
+  --argjson dependabotAlerts "$DEPENDABOT_ALERTS" \
   --arg repo "$REPO" \
   --arg owner "$OWNER" \
   --arg repoName "$REPO_NAME" \
@@ -265,7 +274,8 @@ jq -n \
     sarifReports: $sarif, 
     codeScanning: $codeScanning, 
     dependencies: $dependency,
-    secretScanning: $secretScanning
+    secretScanning: $secretScanning,
+    dependabotAlerts: $dependabotAlerts
   }' > "$OUTPUT_DIR/data.json"
 
 # Clean up temporary file
@@ -280,12 +290,19 @@ if [ ! -f "$TEMPLATE" ] || ! command -v node &> /dev/null; then
     # Extract summary statistics
     CODE_SCANNING_COUNT=$(echo "$CODE_SCANNING_ALERTS" | jq 'length')
     SECRET_SCANNING_COUNT=$(echo "$SECRET_SCANNING_ALERTS" | jq 'length')
+    DEPENDABOT_COUNT=$(echo "$DEPENDABOT_ALERTS" | jq 'length')
     
     # Count by severity
     HIGH_COUNT=$(echo "$CODE_SCANNING_ALERTS" | jq '[.[] | select(.rule.security_severity_level == "high")] | length')
     MEDIUM_COUNT=$(echo "$CODE_SCANNING_ALERTS" | jq '[.[] | select(.rule.security_severity_level == "medium")] | length')
     LOW_COUNT=$(echo "$CODE_SCANNING_ALERTS" | jq '[.[] | select(.rule.security_severity_level == "low")] | length')
     CRITICAL_COUNT=$(echo "$CODE_SCANNING_ALERTS" | jq '[.[] | select(.rule.security_severity_level == "critical")] | length')
+    
+    # Count Dependabot alerts by severity
+    DEPENDABOT_CRITICAL=$(echo "$DEPENDABOT_ALERTS" | jq '[.[] | select(.security_advisory.severity == "critical")] | length')
+    DEPENDABOT_HIGH=$(echo "$DEPENDABOT_ALERTS" | jq '[.[] | select(.security_advisory.severity == "high")] | length')
+    DEPENDABOT_MEDIUM=$(echo "$DEPENDABOT_ALERTS" | jq '[.[] | select(.security_advisory.severity == "medium")] | length')
+    DEPENDABOT_LOW=$(echo "$DEPENDABOT_ALERTS" | jq '[.[] | select(.security_advisory.severity == "low")] | length')
     
     # Generate HTML with actual data
     cat > "$OUTPUT_DIR/summary.html" << EOF
@@ -436,6 +453,10 @@ if [ ! -f "$TEMPLATE" ] || ! command -v node &> /dev/null; then
                 <div class="stat-number">$SECRET_SCANNING_COUNT</div>
                 <div class="stat-label">Secrets Found</div>
             </div>
+            <div class="stat-card info">
+                <div class="stat-number">$DEPENDABOT_COUNT</div>
+                <div class="stat-label">Dependabot Alerts</div>
+            </div>
         </div>
 
         <div class="section">
@@ -506,6 +527,47 @@ EOF
         done
     else
         echo '                <div class="no-data">✅ No secrets detected</div>' >> "$OUTPUT_DIR/summary.html"
+    fi
+
+    cat >> "$OUTPUT_DIR/summary.html" << EOF
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">📦 Dependabot Alerts ($DEPENDABOT_COUNT total)</div>
+            <div class="section-content">
+EOF
+
+    # Add Dependabot alerts to HTML
+    if [ "$DEPENDABOT_COUNT" -gt 0 ]; then
+        echo "$DEPENDABOT_ALERTS" | jq -r '.[] | @json' | while IFS= read -r alert; do
+            ALERT_STATE=$(echo "$alert" | jq -r '.state')
+            PACKAGE_NAME=$(echo "$alert" | jq -r '.security_advisory.package.name')
+            PACKAGE_ECOSYSTEM=$(echo "$alert" | jq -r '.security_advisory.package.ecosystem')
+            ALERT_SEVERITY=$(echo "$alert" | jq -r '.security_advisory.severity')
+            ALERT_SUMMARY=$(echo "$alert" | jq -r '.security_advisory.summary')
+            ALERT_CVE=$(echo "$alert" | jq -r '.security_advisory.cve_id // "N/A"')
+            VULNERABLE_VERSION=$(echo "$alert" | jq -r '.security_vulnerability.vulnerable_version_range // "N/A"')
+            MANIFEST_PATH=$(echo "$alert" | jq -r '.dependency.manifest_path // "Unknown"')
+            
+            cat >> "$OUTPUT_DIR/summary.html" << EOF
+                <div class="alert-item $ALERT_SEVERITY">
+                    <div class="alert-title">
+                        $ALERT_SUMMARY
+                        <span class="severity-badge severity-$ALERT_SEVERITY">$ALERT_SEVERITY</span>
+                    </div>
+                    <div class="alert-description">
+                        <strong>Package:</strong> $PACKAGE_NAME ($PACKAGE_ECOSYSTEM) | 
+                        <strong>Vulnerable version:</strong> $VULNERABLE_VERSION | 
+                        <strong>CVE:</strong> $ALERT_CVE | 
+                        <strong>State:</strong> $ALERT_STATE
+                    </div>
+                    <div class="alert-location">$MANIFEST_PATH</div>
+                </div>
+EOF
+        done
+    else
+        echo '                <div class="no-data">✅ No Dependabot alerts found</div>' >> "$OUTPUT_DIR/summary.html"
     fi
 
     cat >> "$OUTPUT_DIR/summary.html" << EOF
@@ -682,6 +744,7 @@ echo "   High: $HIGH_COUNT alerts"
 echo "   Medium: $MEDIUM_COUNT alerts" 
 echo "   Low: $LOW_COUNT alerts"
 echo "   Secrets: $SECRET_SCANNING_COUNT findings"
+echo "   Dependabot: $DEPENDABOT_COUNT alerts"
 echo ""
 echo "📁 Generated Files:"
 echo "   HTML Report: $OUTPUT_DIR/summary.html"
