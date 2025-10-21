@@ -1,0 +1,52 @@
+{
+  "name": "github-security-reporter",
+  "version": "1.0.0",
+  "description": "Generate comprehensive security reports from GitHub's built-in security features",
+  "main": "github-security-reporter.sh",
+  "bin": {
+    "github-security-reporter": "./github-security-reporter.sh"
+  },
+  "scripts": {
+    "test": "tests/run-tests.sh",
+    "lint": "shellcheck github-security-reporter.sh",
+    "install-deps": "npm install puppeteer",
+    "example": "./github-security-reporter.sh microsoft vscode"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moose0621/github-security-reporter.git"
+  },
+  "keywords": [
+    "github",
+    "security",
+    "vulnerability",
+    "sarif",
+    "codeql",
+    "scanning",
+    "report",
+    "dashboard",
+    "cli",
+    "automation"
+  ],
+  "author": "Your Name <your.email@domain.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Moose0621/github-security-reporter/issues"
+  },
+  "homepage": "https://github.com/Moose0621/github-security-reporter#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "optionalDependencies": {
+    "puppeteer": "^21.0.0"
+  },
+  "devDependencies": {
+    "shellcheck": "^0.8.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "preferGlobal": true
+}
