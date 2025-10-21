@@ -298,12 +298,6 @@ if [ ! -f "$TEMPLATE" ] || ! command -v node &> /dev/null; then
     LOW_COUNT=$(echo "$CODE_SCANNING_ALERTS" | jq '[.[] | select(.rule.security_severity_level == "low")] | length')
     CRITICAL_COUNT=$(echo "$CODE_SCANNING_ALERTS" | jq '[.[] | select(.rule.security_severity_level == "critical")] | length')
     
-    # Count Dependabot alerts by severity
-    DEPENDABOT_CRITICAL=$(echo "$DEPENDABOT_ALERTS" | jq '[.[] | select(.security_advisory.severity == "critical")] | length')
-    DEPENDABOT_HIGH=$(echo "$DEPENDABOT_ALERTS" | jq '[.[] | select(.security_advisory.severity == "high")] | length')
-    DEPENDABOT_MEDIUM=$(echo "$DEPENDABOT_ALERTS" | jq '[.[] | select(.security_advisory.severity == "medium")] | length')
-    DEPENDABOT_LOW=$(echo "$DEPENDABOT_ALERTS" | jq '[.[] | select(.security_advisory.severity == "low")] | length')
-    
     # Generate HTML with actual data
     cat > "$OUTPUT_DIR/summary.html" << EOF
 <!DOCTYPE html>
@@ -467,7 +461,6 @@ EOF
     # Add code scanning alerts to HTML
     if [ "$CODE_SCANNING_COUNT" -gt 0 ]; then
         echo "$CODE_SCANNING_ALERTS" | jq -r '.[] | @json' | while IFS= read -r alert; do
-            ALERT_NUMBER=$(echo "$alert" | jq -r '.number')
             ALERT_RULE=$(echo "$alert" | jq -r '.rule.description')
             ALERT_SEVERITY=$(echo "$alert" | jq -r '.rule.security_severity_level // "unknown"')
             ALERT_PATH=$(echo "$alert" | jq -r '.most_recent_instance.location.path')
