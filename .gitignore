@@ -14,3 +14,4 @@ Thumbs.db
 .env.production.local
 html2pdf.js
 temp_sarif.json
+*.txt
