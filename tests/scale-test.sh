@@ -285,7 +285,7 @@ test_html_generation() {
     # Measure time and memory for HTML generation
     log_info "Processing alerts and generating HTML report..."
     local start_time=$(date +%s.%N)
-    local start_memory=$(free -m | awk 'NR==2{print $3}' 2>/dev/null || echo "0")
+    # Note: Memory tracking removed as it's not reliable across platforms for this test
     
     # Simulate HTML generation by processing the JSON data
     local output_html="$test_dir/summary.html"
@@ -359,13 +359,12 @@ HTMLEOF
     # Add sample of alerts (first 100 to keep HTML reasonable)
     local sample_count=100
     if [ $total_alerts -gt 0 ]; then
-        jq -r '.[] | @json' "$code_alerts" | head -$sample_count | while IFS= read -r alert; do
-            local rule=$(echo "$alert" | jq -r '.rule.description')
-            local severity=$(echo "$alert" | jq -r '.rule.security_severity_level')
-            local path=$(echo "$alert" | jq -r '.most_recent_instance.location.path')
-            local line=$(echo "$alert" | jq -r '.most_recent_instance.location.start_line')
-            
-            echo "        <div class=\"alert-item\"><strong>$severity:</strong> $rule<br><code>$path:$line</code></div>" >> "$output_html"
+        # Use single jq command to format all alerts efficiently
+        jq -r --argjson limit "$sample_count" '
+            .[:$limit] | .[] | 
+            "<div class=\"alert-item\"><strong>\(.rule.security_severity_level):</strong> \(.rule.description)<br><code>\(.most_recent_instance.location.path):\(.most_recent_instance.location.start_line)</code></div>"
+        ' "$code_alerts" | while IFS= read -r line; do
+            echo "        $line" >> "$output_html"
         done
     fi
     
@@ -377,10 +376,8 @@ HTMLEOF
 HTMLEOF
     
     local end_time=$(date +%s.%N)
-    local end_memory=$(free -m | awk 'NR==2{print $3}' 2>/dev/null || echo "0")
     
     local duration=$(echo "$end_time - $start_time" | bc)
-    local memory_used=$((end_memory - start_memory))
     
     # Validate results
     local html_size=$(wc -c < "$output_html")
@@ -388,7 +385,6 @@ HTMLEOF
     
     log_info "Performance Metrics:"
     log_info "  Duration: ${duration}s"
-    log_info "  Memory delta: ${memory_used}MB"
     log_info "  HTML size: $((html_size / 1024))KB"
     log_info "  JSON size: $((json_size / 1024))KB"
     log_info "  Total alerts processed: $total_alerts"
