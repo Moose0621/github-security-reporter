@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test": "tests/run-tests.sh",
+    "test:scale": "tests/scale-test.sh",
     "lint": "shellcheck github-security-reporter.sh",
     "install-deps": "npm install puppeteer",
     "example": "./github-security-reporter.sh microsoft vscode"
