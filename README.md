@@ -262,9 +262,22 @@ cd github-security-reporter
 # Run tests
 ./tests/run-tests.sh
 
+# Run scale tests (validates performance with 1,000+ alerts)
+./tests/scale-test.sh
+
 # Lint the code
 shellcheck github-security-reporter.sh
 ```
+
+### Scale Testing
+
+The repository includes comprehensive scale testing to validate performance with large alert datasets. See [Scale Testing Documentation](docs/SCALE_TESTING.md) for details.
+
+Key capabilities:
+- Tested with up to 2,000 alerts
+- Processing time < 2 seconds for all test cases
+- Validates HTML generation, JSON parsing, and memory usage
+- Automated test suite for continuous validation
 
 ## License
 
